@@ -1,116 +1,205 @@
 <template>
-    <div>
-        <van-nav-bar
-        :title="$route.name"
-        />
-        <div class="top">
-            <van-row>
-                <van-col span="4">
-                    <van-image
-                        round
-                        width="80px"
-                        height="80px"
-                        src="https://img.yzcdn.cn/vant/cat.jpeg"
-                    />
-                </van-col>
-                <van-col span="20" class="ml20">
-                    <!-- <router-link to="/login">登陆</router-link>/
-                    <router-link to="/register">注册</router-link> -->
-                    <p>张三</p>
-                </van-col>
-            </van-row>
+  <div class="my">
+    <div class="bg" :style="{backgroundImage: 'url(' + userInfo.userBg + ')'}">
+      <div class="person">
+        <div class="avatar">
+          <img class="auto-img" :src="userInfo.userImg" alt="">
         </div>
-        
-        <van-cell-group>
-            <van-cell title="我的订单" to="/orderList/orderAll"  is-link />
-            <!-- <van-cell title="我的收藏"  is-link /> -->
-            <van-cell title="我的地址" to="/address"  is-link />
-           <!-- 优惠券单元格 -->
-<van-coupon-cell
-  :coupons="coupons"
-  :chosen-coupon="chosenCoupon"
-  @click="showList = true"
-/>
-<!-- 优惠券列表 -->
-<van-popup
-  v-model="showList"
-  round
-  position="bottom"
-  style="height: 90%; padding-top: 4px;"
->
-  <van-coupon-list
-    :coupons="coupons"
-    :chosen-coupon="chosenCoupon"
-    :disabled-coupons="disabledCoupons"
-    @change="onChange"
-    @exchange="onExchange"
-  />
-</van-popup>
-            <!-- <van-cell title="优惠卷"  is-link /> -->
-            <!-- <van-cell title="设置"  is-link /> -->
-        </van-cell-group>
+        <div class="nickname" v-if="isLogin">{{userInfo.nickName}}</div>
+        <div class="nickname" v-else @click="goState()">登录</div>
+      </div>
+      <div class="desc">{{userInfo.desc == '' ? '这个人很懒，什么都没有留下' : userInfo.desc}}</div>
+
+      <div class="mybg">
+        <span>更换背景</span>
+        <van-uploader class="v-bg" :after-read="upload" />
+      </div>
+
     </div>
+    <van-cell-group>
+      <van-cell v-for="(item, index) in cellData" :key="index" :title="item.title" size="large" @click="goPage(item.name)" is-link />
+    </van-cell-group>
+  </div>
 </template>
 
 <script>
-import Vue from 'vue';
-import { CouponCell, CouponList } from 'vant';
-Vue.use(CouponCell);
-Vue.use(CouponList);
-const coupon = {
-  available: 1,
-  condition: '无使用门槛\n最多优惠12元',
-  reason: '',
-  value: 150,
-  name: '1.5元优惠',
-  startAt: 1489104000,
-  endAt: 1514592000,
-  valueDesc: '1.5',
-  unitDesc: '元'
-};
-    export default {
-        data() {
-    return {
-      chosenCoupon: -1,
-      coupons: [coupon],
-      disabledCoupons: [coupon],
-      showList : false
-    }
-  },
-  methods: {
-    onChange(index) {
-      this.showList = false;
-      this.chosenCoupon = index;
+
+  import {mapState} from 'vuex'
+
+  import {utils} from '../utils/utils'
+
+  export default {
+    name: 'My',
+
+    created() {
+      this.$store.commit('myModule/changeData', {key: 'userInfo', value: {}});
+      this.getUserInfo();
     },
-    onExchange() {
-      this.coupons.push(coupon);
+
+    computed: {
+      isLogin() {
+        return this.$store.state.isLogin;
+      },
+      ...mapState('myModule', ['cellData', 'userInfo'])
+    },
+
+    methods: {
+      goPage(name) {
+        if (!this.isLogin) {
+          this.$toast('请先登录');
+          return;
+        }
+        this.$router.push({name});
+      },
+
+      goState() {
+        this.$router.push({name: 'Login'});
+      },
+
+      //获取用户信息
+      getUserInfo() {
+        let tokenString = localStorage.getItem('_t');
+
+        //加载提示
+        this.$toast.loading({
+          forbidClick: true,
+          duration: 0,
+          message: "加载中..."
+        });
+
+        this.axios({
+          method: 'GET',
+          url: '/findMy',
+          params: {
+            appkey: this.appkey,
+            tokenString
+          }
+        }).then(result => {
+          this.$toast.clear();
+          
+
+          this.$store.commit('changeData', {key: 'isLogin', value: result.data.code != 700});
+
+          if (result.data.code == 700) {
+            return;
+          }
+
+          this.$store.commit('myModule/changeData', {key: 'userInfo', value: result.data.result[0]});
+        }).catch(err => {
+          this.$toast.clear();
+          
+        })
+
+      },
+
+       //上传头像
+      upload(file) {
+        // 
+
+        if (!this.isLogin) {
+          this.$toast('请先登录');
+          return;
+        }
+
+        //控制上传图片大小不能超过 300KB
+        let imgSize = 300 * 1024;
+        if (file.file.size > imgSize) {
+          this.$toast('上传图片大小不能超过300KB');
+          return;
+        }
+
+        //将图片上传到服务器
+
+        //获取图片类型
+        let imgType = file.file.type.split('/')[1];
+        // 
+
+        //处理图片的base64
+        let serverBase64Img = file.content.replace(/data:image\/[A-Za-z]+;base64,/, '');
+        // 
+
+        let tokenString = localStorage.getItem('_t');
+
+        //加载提示
+        this.$toast.loading({
+          forbidClick: true,
+          duration: 0,
+          message: "加载中..."
+        });
+
+        this.axios({
+          method: 'POST',
+          url: '/updateUserBg',
+          data: {
+            appkey: this.appkey,
+            tokenString,
+            imgType,
+            serverBase64Img
+          },
+          transformRequest: utils.transformRequest
+        }).then(result => {
+          this.$toast.clear();
+          
+          this.userInfo.userBg = result.data.userBg;
+        }).catch(err => {
+         this.$toast.clear();
+          
+        })
+
+      }
     }
   }
-    }
 </script>
 
-<style lang="scss" scoped>
-    .top{
-        background: #F37D0F url("../assets/img/bg11.png");
-        background-size: 100% auto ;
-        padding: .266667rem;
-        .van-image{
-            float: right;
-        }
-        .van-col{
-            height: 80px;
-            line-height: 80px;
-            color:#fff;
-            a{
-                color:#fff;
-            }
-        }
-            .ml20{
-                width: 200px;
-                margin-left: 40px;
-                p{
-                  font-size: 18px;
-                }
-            }
+<style lang="less" scoped>
+  .my{
+    .bg{
+      height: 80px;
+      background-color: #ddd;
+      background-repeat: no-repeat;
+      background-position: center center;
+      background-size: cover;
+      padding: 60px 20px;
+      position: relative;
     }
+    .mybg{
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: #fff;
+      font-size: 14px;
+    }
+    .v-bg{
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .person{
+      display: flex;
+    }
+    .avatar{
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background-color: #e8e8e8;
+      overflow: hidden;
+    }
+    .nickname{
+      color: #fff;
+      font-size: 16px;
+      margin-left: 20px;
+      line-height: 80px;
+    }
+
+    .desc{
+      color: #fff;
+      font-size: 12px;
+      margin-top: 10px;
+      margin-left: 100px;
+    }
+  }
 </style>

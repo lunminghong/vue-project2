@@ -1,23 +1,57 @@
 import Vue from 'vue'
 import Vuex from 'vuex'
 
+import {registerModule} from './register/store'
+import {loginModule} from './login/store'
+import {mainModule} from './main/store'
+
+import {menuModule} from './menu/store'
+
+import {detailModule} from './detail/store'
+
+import {shopcartModule} from './shopcart/store'
+
+import {myModule} from './my/store'
+
+import {likeModule} from './like/store'
+
+import {newAddressModule} from './newAddress/store'
+
+import {addressModule} from './address/store'
+
+import {payModule} from './pay/store'
+
+import {orderModule} from './order/store'
+
 Vue.use(Vuex)
-import cart from "./cart";
-import address from "./address";
-import orderlist from "./orderlist";
 
 export default new Vuex.Store({
-  // 全局
   state: {
-    vanTabbar:true, //底部导航控制
+    //菜单页面是否已经加载过
+    menuIsLoaded: false,
+
+    //记录是否登录
+    isLogin: false
   },
+
   mutations: {
+    changeData(state, data) {
+      state[data.key] = data.value;
+    }
   },
-  actions: {
-  },
+
   modules: {
-    cart, //购物车 商品详情与购物车
-    address, //我的地址
-    orderlist, //订单列表
+    registerModule,
+    loginModule,
+    mainModule,
+    menuModule,
+    detailModule,
+    shopcartModule,
+    myModule,
+    likeModule,
+    newAddressModule,
+    addressModule,
+    payModule,
+    orderModule
   }
 })
